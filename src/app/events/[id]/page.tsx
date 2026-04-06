@@ -3,21 +3,29 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
-import { formatDateTime, isDeadlinePassed, isBITSEmail } from '@/lib/utils';
+import { formatDateTime, isDeadlinePassed } from '@/lib/utils';
 import Modal from '@/components/Modal';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { 
-  Calendar, MapPin, Link as LinkIcon, Clock, User, Phone, 
-  Users, Heart, Check, ArrowLeft, Settings, ExternalLink 
+  Calendar, MapPin, Clock, User, Phone, Mail,
+  Heart, Check, ArrowLeft, Settings, ExternalLink 
 } from 'lucide-react';
+
+interface Contact {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+}
 
 export default function EventDetail() {
   const params = useParams();
   const router = useRouter();
   const eventId = params.id as string;
   const [event, setEvent] = useState<any>(null);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [isInterested, setIsInterested] = useState(false);
@@ -52,28 +60,36 @@ export default function EventDetail() {
 
   async function fetchEvent() {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('events')
-      .select(`
-        *,
-        event_tags (tag),
-        interested:interested(count),
-        registered:registered(count)
-      `)
-      .eq('id', eventId)
-      .single();
+    
+    const [eventRes, contactsRes] = await Promise.all([
+      supabase
+        .from('events')
+        .select(`
+          *,
+          event_tags (tag),
+          interested:interested(count),
+          registered:registered(count)
+        `)
+        .eq('id', eventId)
+        .single(),
+      supabase
+        .from('event_contacts')
+        .select('*')
+        .eq('event_id', eventId)
+    ]);
 
-    if (error || !data) {
+    if (eventRes.error || !eventRes.data) {
       router.push('/');
       return;
     }
 
     setEvent({
-      ...data,
-      tags: data.event_tags?.map((t: any) => t.tag) || [],
-      interested_count: data.interested?.[0]?.count || 0,
-      registered_count: data.registered?.[0]?.count || 0,
+      ...eventRes.data,
+      tags: eventRes.data.event_tags?.map((t: any) => t.tag) || [],
+      interested_count: eventRes.data.interested?.[0]?.count || 0,
+      registered_count: eventRes.data.registered?.[0]?.count || 0,
     });
+    setContacts(contactsRes.data || []);
     setLoading(false);
   }
 
@@ -215,18 +231,36 @@ export default function EventDetail() {
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-6 pt-6 border-t text-sm">
-          <div className="flex items-center gap-2">
-            <User className="w-4 h-4 text-[var(--muted-foreground)]" />
-            <span className="text-[var(--muted-foreground)]">Organized by</span>
-            <span className="font-medium">{event.creator_name || event.creator_email}</span>
-          </div>
-          {event.creator_phone && (
-            <div className="flex items-center gap-2">
-              <Phone className="w-4 h-4 text-[var(--muted-foreground)]" />
-              <span className="font-medium">{event.creator_phone}</span>
+        {contacts.length > 0 && (
+          <div className="pt-6 border-t">
+            <h3 className="text-sm font-medium text-[var(--muted-foreground)] mb-3">Contact for Queries</h3>
+            <div className="flex flex-wrap gap-3">
+              {contacts.map((contact) => (
+                <div key={contact.id} className="flex items-center gap-2 px-3 py-2 bg-[var(--muted)] rounded-lg text-sm">
+                  <User className="w-4 h-4 text-[var(--muted-foreground)]" />
+                  <span className="font-medium">{contact.name}</span>
+                  {contact.email && (
+                    <a href={`mailto:${contact.email}`} className="text-[var(--primary)] hover:underline flex items-center gap-1">
+                      <Mail className="w-3.5 h-3.5" />
+                      {contact.email}
+                    </a>
+                  )}
+                  {contact.phone && (
+                    <a href={`tel:${contact.phone}`} className="text-[var(--primary)] hover:underline flex items-center gap-1">
+                      <Phone className="w-3.5 h-3.5" />
+                      {contact.phone}
+                    </a>
+                  )}
+                </div>
+              ))}
             </div>
-          )}
+          </div>
+        )}
+
+        <div className="mt-6 pt-6 border-t">
+          <p className="text-sm text-[var(--muted-foreground)]">
+            <span className="font-medium text-[var(--foreground)]">Created by</span> {event.creator_name || event.creator_email}
+          </p>
         </div>
       </div>
 

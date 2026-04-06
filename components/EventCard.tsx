@@ -7,8 +7,26 @@ interface EventCardProps {
   event: Event;
 }
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/#{1,6}\s?/g, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/_(.+?)_/g, '$1')
+    .replace(/`(.+?)`/g, '$1')
+    .replace(/\[(.+?)\]\(.+?\)/g, '$1')
+    .replace(/!\[.*?\]\(.+?\)/g, '')
+    .replace(/^\s*[-*+]\s/gm, '')
+    .replace(/^\s*\d+\.\s/gm, '')
+    .replace(/^\s*>\s?/gm, '')
+    .replace(/\n+/g, ' ')
+    .trim();
+}
+
 export default function EventCard({ event }: EventCardProps) {
   const deadlinePassed = isDeadlinePassed(event.registration_deadline);
+  const plainDescription = event.description ? stripMarkdown(event.description) : '';
 
   return (
     <Link href={`/events/${event.id}`} className="group block">
@@ -39,9 +57,9 @@ export default function EventCard({ event }: EventCardProps) {
             {event.title}
           </h3>
 
-          {event.description && (
+          {plainDescription && (
             <p className="text-sm text-[var(--muted-foreground)] mb-4 line-clamp-2">
-              {event.description}
+              {plainDescription}
             </p>
           )}
 

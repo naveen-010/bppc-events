@@ -5,7 +5,14 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { CATEGORIES, SUGGESTED_TAGS, isBITSEmail } from '@/lib/utils';
 import Link from 'next/link';
-import { Upload, X, Loader2 } from 'lucide-react';
+import { Upload, X, Loader2, Plus, User, Mail, Phone } from 'lucide-react';
+
+interface Contact {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+}
 
 export default function CreateEvent() {
   const router = useRouter();
@@ -28,10 +35,13 @@ export default function CreateEvent() {
     registration_deadline_date: '',
     registration_deadline_time: '',
     poster_url: '',
-    creator_phone: '',
     tags: [] as string[],
     customTag: '',
   });
+
+  const [contacts, setContacts] = useState<Contact[]>([
+    { id: '1', name: '', email: '', phone: '' }
+  ]);
 
   useEffect(() => {
     checkAuth();
@@ -64,7 +74,7 @@ export default function CreateEvent() {
     const fileExt = file.name.split('.').pop();
     const fileName = `${user.id}/${Date.now()}.${fileExt}`;
 
-    const { data, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('event-posters')
       .upload(fileName, file);
 
@@ -82,11 +92,31 @@ export default function CreateEvent() {
     setUploading(false);
   }, [user, supabase]);
 
+  function addContact() {
+    setContacts([...contacts, { id: Date.now().toString(), name: '', email: '', phone: '' }]);
+  }
+
+  function removeContact(id: string) {
+    if (contacts.length > 1) {
+      setContacts(contacts.filter(c => c.id !== id));
+    }
+  }
+
+  function updateContact(id: string, field: 'name' | 'email' | 'phone', value: string) {
+    setContacts(contacts.map(c => c.id === id ? { ...c, [field]: value } : c));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     
     if (!user) {
       router.push('/auth/login');
+      return;
+    }
+
+    const validContacts = contacts.filter(c => c.name.trim() && (c.email.trim() || c.phone.trim()));
+    if (validContacts.length === 0) {
+      setError('Please add at least one contact person with name and either email or phone.');
       return;
     }
 
@@ -119,7 +149,6 @@ export default function CreateEvent() {
         creator_id: user.id,
         creator_email: user.email,
         creator_name: user.user_metadata?.full_name || null,
-        creator_phone: formData.creator_phone || null,
       })
       .select()
       .single();
@@ -136,6 +165,16 @@ export default function CreateEvent() {
         tag: tag,
       }));
       await supabase.from('event_tags').insert(tagInserts);
+    }
+
+    if (validContacts.length > 0 && event) {
+      const contactInserts = validContacts.map((c) => ({
+        event_id: event.id,
+        name: c.name.trim(),
+        email: c.email.trim() || null,
+        phone: c.phone.trim() || null,
+      }));
+      await supabase.from('event_contacts').insert(contactInserts);
     }
 
     router.push(`/events/${event.id}`);
@@ -367,58 +406,116 @@ export default function CreateEvent() {
         </div>
 
         <div className="bg-[var(--card)] rounded-2xl border p-6 space-y-5">
-          <h2 className="font-semibold text-lg">Contact & Tags</h2>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">Contact Phone (for queries)</label>
-            <input
-              type="tel"
-              value={formData.creator_phone}
-              onChange={(e) => setFormData({ ...formData, creator_phone: e.target.value })}
-              className="w-full px-4 py-3 bg-[var(--background)] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
-              placeholder="+91 98765 43210"
-            />
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-lg">Contact Persons</h2>
+            <button
+              type="button"
+              onClick={addContact}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg hover:opacity-90"
+            >
+              <Plus className="w-4 h-4" />
+              Add Contact
+            </button>
           </div>
+          <p className="text-sm text-[var(--muted-foreground)]">Add people who can be contacted for queries. Name is required, and at least one of email or phone.</p>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">Tags</label>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {SUGGESTED_TAGS.map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => toggleTag(tag)}
-                  className={`px-3 py-1.5 text-sm rounded-lg transition-all ${
-                    formData.tags.includes(tag)
-                      ? 'bg-[var(--primary)] text-white'
-                      : 'bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--accent)]'
-                  }`}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={formData.customTag}
-                onChange={(e) => setFormData({ ...formData, customTag: e.target.value })}
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomTag())}
-                className="flex-1 px-4 py-3 bg-[var(--background)] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
-                placeholder="Add custom tag"
-              />
+          <div className="space-y-4">
+            {contacts.map((contact, index) => (
+              <div key={contact.id} className="flex gap-3 items-start p-4 bg-[var(--muted)] rounded-xl">
+                <div className="flex-1 grid sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5 text-[var(--muted-foreground)]">
+                      <User className="w-3 h-3 inline mr-1" />
+                      Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={contact.name}
+                      onChange={(e) => updateContact(contact.id, 'name', e.target.value)}
+                      className="w-full px-3 py-2 bg-[var(--background)] border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
+                      placeholder="John Doe"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5 text-[var(--muted-foreground)]">
+                      <Mail className="w-3 h-3 inline mr-1" />
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={contact.email}
+                      onChange={(e) => updateContact(contact.id, 'email', e.target.value)}
+                      className="w-full px-3 py-2 bg-[var(--background)] border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
+                      placeholder="john@email.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1.5 text-[var(--muted-foreground)]">
+                      <Phone className="w-3 h-3 inline mr-1" />
+                      Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={contact.phone}
+                      onChange={(e) => updateContact(contact.id, 'phone', e.target.value)}
+                      className="w-full px-3 py-2 bg-[var(--background)] border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
+                      placeholder="+91 98765 43210"
+                    />
+                  </div>
+                </div>
+                {contacts.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeContact(contact.id)}
+                    className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-[var(--card)] rounded-2xl border p-6 space-y-5">
+          <h2 className="font-semibold text-lg">Tags</h2>
+
+          <div className="flex flex-wrap gap-2 mb-3">
+            {SUGGESTED_TAGS.map((tag) => (
               <button
+                key={tag}
                 type="button"
-                onClick={addCustomTag}
-                className="px-5 py-3 bg-[var(--muted)] rounded-xl hover:bg-[var(--accent)] transition-colors font-medium"
+                onClick={() => toggleTag(tag)}
+                className={`px-3 py-1.5 text-sm rounded-lg transition-all ${
+                  formData.tags.includes(tag)
+                    ? 'bg-[var(--primary)] text-white'
+                    : 'bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--accent)]'
+                }`}
               >
-                Add
+                {tag}
               </button>
-            </div>
-            {formData.tags.length > 0 && (
-              <p className="text-sm text-[var(--muted-foreground)] mt-2">Selected: {formData.tags.join(', ')}</p>
-            )}
+            ))}
           </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={formData.customTag}
+              onChange={(e) => setFormData({ ...formData, customTag: e.target.value })}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomTag())}
+              className="flex-1 px-4 py-3 bg-[var(--background)] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
+              placeholder="Add custom tag"
+            />
+            <button
+              type="button"
+              onClick={addCustomTag}
+              className="px-5 py-3 bg-[var(--muted)] rounded-xl hover:bg-[var(--accent)] transition-colors font-medium"
+            >
+              Add
+            </button>
+          </div>
+          {formData.tags.length > 0 && (
+            <p className="text-sm text-[var(--muted-foreground)]">Selected: {formData.tags.join(', ')}</p>
+          )}
         </div>
 
         <button
