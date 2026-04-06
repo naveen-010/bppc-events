@@ -231,18 +231,20 @@ export default function EventDetail() {
       </div>
 
       <div className="bg-[var(--card)] rounded-2xl border p-6 sm:p-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex gap-6">
-            <div>
-              <p className="text-2xl font-bold text-[var(--primary)]">{event.registered_count}</p>
-              <p className="text-sm text-[var(--muted-foreground)]">Registered</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-amber-500">{event.interested_count}</p>
-              <p className="text-sm text-[var(--muted-foreground)]">Interested</p>
+        {isCreator && (
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex gap-6">
+              <div>
+                <p className="text-2xl font-bold text-[var(--primary)]">{event.registered_count}</p>
+                <p className="text-sm text-[var(--muted-foreground)]">Registered</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-amber-500">{event.interested_count}</p>
+                <p className="text-sm text-[var(--muted-foreground)]">Interested</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="flex flex-col sm:flex-row gap-3">
           {!deadlinePassed && event.registration_link && (
