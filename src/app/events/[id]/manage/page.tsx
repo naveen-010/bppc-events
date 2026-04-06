@@ -6,7 +6,14 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { formatDateTime, CATEGORIES, SUGGESTED_TAGS } from '@/lib/utils';
 import Modal from '@/components/Modal';
-import { ArrowLeft, Send, Users, Mail, Pencil, Trash2, Loader2, Upload, X } from 'lucide-react';
+import { ArrowLeft, Send, Users, Mail, Pencil, Trash2, Loader2, Upload, X, Plus, User as UserIcon, Phone } from 'lucide-react';
+
+interface Contact {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+}
 
 export default function ManageEvent() {
   const params = useParams();
@@ -37,10 +44,13 @@ export default function ManageEvent() {
     registration_deadline_date: '',
     registration_deadline_time: '',
     poster_url: '',
-    creator_phone: '',
     tags: [] as string[],
     customTag: '',
   });
+
+  const [editContacts, setEditContacts] = useState<Contact[]>([
+    { id: '1', name: '', email: '', phone: '' }
+  ]);
 
   useEffect(() => {
     checkAuth();
@@ -80,24 +90,43 @@ export default function ManageEvent() {
     setEvent(eventData);
     initEditForm(eventData);
     
-    const { data: users } = await supabase
-      .from('registered')
-      .select(`
-        created_at,
-        users:user_id (
-          email,
-          full_name
-        )
-      `)
-      .eq('event_id', eventId)
-      .order('created_at', { ascending: false });
+    const [usersRes, tagsRes, contactsRes] = await Promise.all([
+      supabase
+        .from('registered')
+        .select(`
+          created_at,
+          users:user_id (
+            email,
+            full_name
+          )
+        `)
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('event_tags')
+        .select('tag')
+        .eq('event_id', eventId),
+      supabase
+        .from('event_contacts')
+        .select('*')
+        .eq('event_id', eventId)
+    ]);
 
-    const { data: tags } = await supabase
-      .from('event_tags')
-      .select('tag')
-      .eq('event_id', eventId);
-
-    setRegisteredUsers(users || []);
+    setRegisteredUsers(usersRes.data || []);
+    
+    if (tagsRes.data && tagsRes.data.length > 0) {
+      setEditForm(prev => ({ ...prev, tags: tagsRes.data!.map((t: any) => t.tag) }));
+    }
+    
+    if (contactsRes.data && contactsRes.data.length > 0) {
+      setEditContacts(contactsRes.data.map((c: any, i: number) => ({
+        id: (i + 1).toString(),
+        name: c.name || '',
+        email: c.email || '',
+        phone: c.phone || ''
+      })));
+    }
+    
     setLoading(false);
   }
 
@@ -117,10 +146,11 @@ export default function ManageEvent() {
       registration_deadline_date: deadlineDate?.toISOString().split('T')[0] || '',
       registration_deadline_time: deadlineDate?.toTimeString().slice(0, 5) || '',
       poster_url: eventData.poster_url || '',
-      creator_phone: eventData.creator_phone || '',
       tags: [],
       customTag: '',
     });
+    
+    setEditContacts([{ id: '1', name: '', email: '', phone: '' }]);
   }
 
   const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -132,7 +162,7 @@ export default function ManageEvent() {
     const fileExt = file.name.split('.').pop();
     const fileName = `${user.id}/${Date.now()}.${fileExt}`;
 
-    const { data, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('event-posters')
       .upload(fileName, file);
 
@@ -175,7 +205,6 @@ export default function ManageEvent() {
         registration_link: editForm.registration_link || null,
         registration_deadline: regDeadline,
         poster_url: editForm.poster_url || null,
-        creator_phone: editForm.creator_phone || null,
       })
       .eq('id', eventId);
 
@@ -188,6 +217,18 @@ export default function ManageEvent() {
           tag: tag,
         }));
         await supabase.from('event_tags').insert(tagInserts);
+      }
+
+      await supabase.from('event_contacts').delete().eq('event_id', eventId);
+      const validContacts = editContacts.filter(c => c.name.trim() && (c.email.trim() || c.phone.trim()));
+      if (validContacts.length > 0) {
+        const contactInserts = validContacts.map((c) => ({
+          event_id: eventId,
+          name: c.name.trim(),
+          email: c.email.trim() || null,
+          phone: c.phone.trim() || null,
+        }));
+        await supabase.from('event_contacts').insert(contactInserts);
       }
 
       fetchEvent(user!.id);
@@ -253,6 +294,20 @@ export default function ManageEvent() {
         customTag: '',
       }));
     }
+  }
+
+  function addEditContact() {
+    setEditContacts([...editContacts, { id: Date.now().toString(), name: '', email: '', phone: '' }]);
+  }
+
+  function removeEditContact(id: string) {
+    if (editContacts.length > 1) {
+      setEditContacts(editContacts.filter(c => c.id !== id));
+    }
+  }
+
+  function updateEditContact(id: string, field: 'name' | 'email' | 'phone', value: string) {
+    setEditContacts(editContacts.map(c => c.id === id ? { ...c, [field]: value } : c));
   }
 
   if (loading || !event) {
@@ -404,7 +459,7 @@ export default function ManageEvent() {
         onClose={() => setShowEditModal(false)}
         title="Edit Event"
       >
-        <form onSubmit={(e) => { e.preventDefault(); saveEdit(); }} className="space-y-5">
+        <form onSubmit={(e) => { e.preventDefault(); saveEdit(); }} className="space-y-5 max-h-[70vh] overflow-y-auto pr-2">
           <div>
             <label className="block text-sm font-medium mb-2">Event Title *</label>
             <input
@@ -428,8 +483,9 @@ export default function ManageEvent() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Category</label>
+            <label className="block text-sm font-medium mb-2">Category *</label>
             <select
+              required
               value={editForm.category}
               onChange={(e) => setEditForm(prev => ({ ...prev, category: e.target.value }))}
               className="w-full px-4 py-3 bg-[var(--background)] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
@@ -438,6 +494,48 @@ export default function ManageEvent() {
                 <option key={cat.value} value={cat.value}>{cat.label}</option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Event Poster</label>
+            <div className="border-2 border-dashed rounded-xl p-6 text-center">
+              {editForm.poster_url ? (
+                <div className="relative">
+                  <img src={editForm.poster_url} alt="Preview" className="max-h-48 mx-auto rounded-lg" />
+                  <button
+                    type="button"
+                    onClick={() => setEditForm(prev => ({ ...prev, poster_url: '' }))}
+                    className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    disabled={uploading}
+                  />
+                  <div className="flex flex-col items-center gap-2 text-[var(--muted-foreground)]">
+                    {uploading ? (
+                      <>
+                        <Loader2 className="w-8 h-8 animate-spin" />
+                        <span>Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-8 h-8" />
+                        <span className="text-sm">Click to upload or drag and drop</span>
+                        <span className="text-xs">PNG, JPG up to 5MB</span>
+                      </>
+                    )}
+                  </div>
+                </label>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -481,6 +579,7 @@ export default function ManageEvent() {
                 value={editForm.location}
                 onChange={(e) => setEditForm(prev => ({ ...prev, location: e.target.value }))}
                 className="w-full px-4 py-3 bg-[var(--background)] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
+                placeholder="e.g., LT-1, BITS Pilani"
               />
             </div>
           )}
@@ -492,6 +591,7 @@ export default function ManageEvent() {
               value={editForm.registration_link}
               onChange={(e) => setEditForm(prev => ({ ...prev, registration_link: e.target.value }))}
               className="w-full px-4 py-3 bg-[var(--background)] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
+              placeholder="https://forms.google.com/..."
             />
           </div>
 
@@ -517,54 +617,115 @@ export default function ManageEvent() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Contact Phone</label>
-            <input
-              type="tel"
-              value={editForm.creator_phone}
-              onChange={(e) => setEditForm(prev => ({ ...prev, creator_phone: e.target.value }))}
-              className="w-full px-4 py-3 bg-[var(--background)] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
-            />
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-medium">Contact Persons</label>
+              <button
+                type="button"
+                onClick={addEditContact}
+                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg hover:opacity-90"
+              >
+                <Plus className="w-3 h-3" />
+                Add Contact
+              </button>
+            </div>
+            <p className="text-xs text-[var(--muted-foreground)] mb-3">Name required, and at least one of email or phone.</p>
+
+            <div className="space-y-3">
+              {editContacts.map((contact) => (
+                <div key={contact.id} className="flex gap-2 items-start p-3 bg-[var(--muted)] rounded-xl">
+                  <div className="flex-1 grid sm:grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium mb-1 text-[var(--muted-foreground)]">
+                        <UserIcon className="w-3 h-3 inline mr-1" />
+                        Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={contact.name}
+                        onChange={(e) => updateEditContact(contact.id, 'name', e.target.value)}
+                        className="w-full px-2 py-1.5 bg-[var(--background)] border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                        placeholder="John Doe"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1 text-[var(--muted-foreground)]">
+                        <Mail className="w-3 h-3 inline mr-1" />
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        value={contact.email}
+                        onChange={(e) => updateEditContact(contact.id, 'email', e.target.value)}
+                        className="w-full px-2 py-1.5 bg-[var(--background)] border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                        placeholder="john@email.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium mb-1 text-[var(--muted-foreground)]">
+                        <Phone className="w-3 h-3 inline mr-1" />
+                        Phone
+                      </label>
+                      <input
+                        type="tel"
+                        value={contact.phone}
+                        onChange={(e) => updateEditContact(contact.id, 'phone', e.target.value)}
+                        className="w-full px-2 py-1.5 bg-[var(--background)] border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                        placeholder="+91 98765 43210"
+                      />
+                    </div>
+                  </div>
+                  {editContacts.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeEditContact(contact.id)}
+                      className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors mt-5"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">Poster Image</label>
-            <div className="border-2 border-dashed rounded-xl p-4 text-center">
-              {editForm.poster_url ? (
-                <div className="relative inline-block">
-                  <img src={editForm.poster_url} alt="Preview" className="max-h-32 mx-auto rounded-lg" />
-                  <button
-                    type="button"
-                    onClick={() => setEditForm(prev => ({ ...prev, poster_url: '' }))}
-                    className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <label className="cursor-pointer">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                    disabled={uploading}
-                  />
-                  <div className="flex flex-col items-center gap-2 text-[var(--muted-foreground)]">
-                    {uploading ? (
-                      <>
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                        <span className="text-sm">Uploading...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="w-6 h-6" />
-                        <span className="text-sm">Click to upload</span>
-                      </>
-                    )}
-                  </div>
-                </label>
-              )}
+            <label className="block text-sm font-medium mb-2">Tags</label>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {SUGGESTED_TAGS.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => toggleTag(tag)}
+                  className={`px-3 py-1.5 text-sm rounded-lg transition-all ${
+                    editForm.tags.includes(tag)
+                      ? 'bg-[var(--primary)] text-white'
+                      : 'bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--accent)]'
+                  }`}
+                >
+                  {tag}
+                </button>
+              ))}
             </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={editForm.customTag}
+                onChange={(e) => setEditForm(prev => ({ ...prev, customTag: e.target.value }))}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomTag())}
+                className="flex-1 px-4 py-2 bg-[var(--background)] border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+                placeholder="Add custom tag"
+              />
+              <button
+                type="button"
+                onClick={addCustomTag}
+                className="px-3 py-2 bg-[var(--muted)] rounded-xl hover:bg-[var(--accent)] transition-colors text-sm"
+              >
+                Add
+              </button>
+            </div>
+            {editForm.tags.length > 0 && (
+              <p className="text-xs text-[var(--muted-foreground)] mt-2">Selected: {editForm.tags.join(', ')}</p>
+            )}
           </div>
 
           <div className="flex gap-3 pt-2">
