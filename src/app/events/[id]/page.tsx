@@ -133,10 +133,13 @@ export default function EventDetail() {
 
   if (loading || !event) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-10">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 w-2/3 bg-[var(--muted)] rounded" />
-          <div className="h-64 bg-[var(--muted)] rounded-2xl" />
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="animate-pulse">
+          <div className="h-8 w-2/3 bg-[var(--muted)] rounded mb-6" />
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 h-96 bg-[var(--muted)] rounded-2xl" />
+            <div className="h-96 bg-[var(--muted)] rounded-2xl" />
+          </div>
         </div>
       </div>
     );
@@ -146,7 +149,7 @@ export default function EventDetail() {
   const isCreator = user?.id === event.creator_id;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <Link
         href="/"
         className="inline-flex items-center gap-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] mb-6 transition-colors"
@@ -155,197 +158,214 @@ export default function EventDetail() {
         Back to events
       </Link>
 
-      {event.poster_url && (
-        <div className="aspect-video rounded-2xl overflow-hidden mb-8 bg-gradient-to-br from-[var(--muted)] to-[var(--accent)]">
-          <img src={event.poster_url} alt={event.title} className="w-full h-full object-cover" />
-        </div>
-      )}
-
-      <div className="bg-[var(--card)] rounded-2xl border p-6 sm:p-8 mb-6">
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-[var(--primary)]/10 text-[var(--primary)]">
-            {event.category}
-          </span>
-          {event.is_online && (
-            <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-500/10 text-emerald-600">
-              Online Event
-            </span>
-          )}
-        </div>
-
-        <h1 className="text-2xl sm:text-3xl font-bold mb-6">{event.title}</h1>
-
-        <div className="grid sm:grid-cols-2 gap-6 mb-8">
-          <div className="flex items-start gap-4">
-            <div className="p-3 rounded-xl bg-[var(--primary)]/10">
-              <Calendar className="w-5 h-5 text-[var(--primary)]" />
-            </div>
-            <div>
-              <p className="font-medium">Event Date & Time</p>
-              <p className="text-[var(--muted-foreground)]">{formatDateTime(event.event_date)}</p>
-            </div>
-          </div>
-          
-          {event.location && (
-            <div className="flex items-start gap-4">
-              <div className="p-3 rounded-xl bg-[var(--primary)]/10">
-                <MapPin className="w-5 h-5 text-[var(--primary)]" />
-              </div>
-              <div>
-                <p className="font-medium">Location</p>
-                <p className="text-[var(--muted-foreground)]">{event.location}</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {event.registration_deadline && (
-          <div className={`flex items-start gap-4 p-4 rounded-xl mb-6 ${deadlinePassed ? 'bg-red-500/5' : 'bg-[var(--muted)]'}`}>
-            <div className={`p-3 rounded-xl ${deadlinePassed ? 'bg-red-500/10' : 'bg-[var(--accent)]'}`}>
-              <Clock className={`w-5 h-5 ${deadlinePassed ? 'text-red-500' : 'text-[var(--muted-foreground)]'}`} />
-            </div>
-            <div>
-              <p className={`font-medium ${deadlinePassed ? 'text-red-500' : ''}`}>
-                Registration Deadline
-              </p>
-              <p className={`${deadlinePassed ? 'text-red-500/70' : 'text-[var(--muted-foreground)]'}`}>
-                {formatDateTime(event.registration_deadline)}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {event.description && (
-          <div className="prose prose-neutral dark:prose-invert max-w-none mb-8">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{event.description}</ReactMarkdown>
-          </div>
-        )}
-
-        {event.tags && event.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-6">
-            {event.tags.map((tag: string) => (
-              <span key={tag} className="text-sm px-3 py-1.5 rounded-lg bg-[var(--muted)] text-[var(--muted-foreground)]">
-                {tag}
+      <div className="grid lg:grid-cols-5 gap-6 lg:gap-8">
+        <div className="lg:col-span-3 space-y-6">
+          <div className="bg-[var(--card)] rounded-2xl border p-6 sm:p-8">
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-[var(--primary)]/10 text-[var(--primary)]">
+                {event.category}
               </span>
-            ))}
-          </div>
-        )}
+              {event.is_online && (
+                <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-500/10 text-emerald-600">
+                  Online Event
+                </span>
+              )}
+            </div>
 
-        {contacts.length > 0 && (
-          <div className="pt-6 border-t">
-            <h3 className="text-sm font-medium text-[var(--muted-foreground)] mb-3">Contact for Queries</h3>
-            <div className="flex flex-wrap gap-3">
-              {contacts.map((contact) => (
-                <div key={contact.id} className="flex items-center gap-2 px-3 py-2 bg-[var(--muted)] rounded-lg text-sm">
-                  <User className="w-4 h-4 text-[var(--muted-foreground)]" />
-                  <span className="font-medium">{contact.name}</span>
-                  {contact.email && (
-                    <a href={`mailto:${contact.email}`} className="text-[var(--primary)] hover:underline flex items-center gap-1">
-                      <Mail className="w-3.5 h-3.5" />
-                      {contact.email}
-                    </a>
-                  )}
-                  {contact.phone && (
-                    <a href={`tel:${contact.phone}`} className="text-[var(--primary)] hover:underline flex items-center gap-1">
-                      <Phone className="w-3.5 h-3.5" />
-                      {contact.phone}
-                    </a>
-                  )}
+            <h1 className="text-2xl sm:text-3xl font-bold mb-6">{event.title}</h1>
+
+            <div className="grid sm:grid-cols-2 gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-lg bg-[var(--primary)]/10">
+                  <Calendar className="w-5 h-5 text-[var(--primary)]" />
                 </div>
+                <div>
+                  <p className="text-xs text-[var(--muted-foreground)]">When</p>
+                  <p className="font-medium text-sm">{formatDateTime(event.event_date)}</p>
+                </div>
+              </div>
+              
+              {event.location && (
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-lg bg-[var(--primary)]/10">
+                    <MapPin className="w-5 h-5 text-[var(--primary)]" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-[var(--muted-foreground)]">Where</p>
+                    <p className="font-medium text-sm">{event.location}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {event.registration_deadline && (
+              <div className={`flex items-center gap-3 p-4 rounded-xl ${deadlinePassed ? 'bg-red-500/5' : 'bg-[var(--muted)]'}`}>
+                <div className={`p-2.5 rounded-lg ${deadlinePassed ? 'bg-red-500/10' : 'bg-[var(--accent)]'}`}>
+                  <Clock className={`w-5 h-5 ${deadlinePassed ? 'text-red-500' : 'text-[var(--muted-foreground)]'}`} />
+                </div>
+                <div>
+                  <p className={`text-xs ${deadlinePassed ? 'text-red-500' : 'text-[var(--muted-foreground)]'}`}>
+                    Registration {deadlinePassed ? 'closed' : 'closes'}
+                  </p>
+                  <p className={`font-medium text-sm ${deadlinePassed ? 'text-red-500' : ''}`}>
+                    {formatDateTime(event.registration_deadline)}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {event.description && (
+            <div className="bg-[var(--card)] rounded-2xl border p-6 sm:p-8">
+              <h2 className="text-lg font-semibold mb-4">About</h2>
+              <div className="prose prose-neutral dark:prose-invert max-w-none text-sm leading-relaxed">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{event.description}</ReactMarkdown>
+              </div>
+            </div>
+          )}
+
+          {event.tags && event.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {event.tags.map((tag: string) => (
+                <span key={tag} className="text-sm px-3 py-1.5 rounded-lg bg-[var(--card)] border text-[var(--muted-foreground)]">
+                  {tag}
+                </span>
               ))}
             </div>
-          </div>
-        )}
-
-        <div className="mt-6 pt-6 border-t">
-          <p className="text-sm text-[var(--muted-foreground)]">
-            <span className="font-medium text-[var(--foreground)]">Created by</span> {event.creator_name || event.creator_email}
-          </p>
-        </div>
-      </div>
-
-      <div className="bg-[var(--card)] rounded-2xl border p-6 sm:p-8">
-        {isCreator && (
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex gap-6">
-              <div>
-                <p className="text-2xl font-bold text-[var(--primary)]">{event.registered_count}</p>
-                <p className="text-sm text-[var(--muted-foreground)]">Registered</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-amber-500">{event.interested_count}</p>
-                <p className="text-sm text-[var(--muted-foreground)]">Interested</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-col sm:flex-row gap-3">
-          {!deadlinePassed && event.registration_link && (
-            <a
-              href={event.registration_link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-xl hover:opacity-90 transition-opacity font-medium"
-            >
-              <ExternalLink className="w-4 h-4" />
-              Register on Form
-            </a>
           )}
 
-          <button
-            onClick={toggleRegistered}
-            disabled={processing || !user}
-            className={`flex-1 flex items-center justify-center gap-2 px-6 py-3.5 font-medium rounded-xl transition-all disabled:opacity-50 ${
-              isRegistered
-                ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                : 'bg-[var(--muted)] text-[var(--foreground)] hover:bg-[var(--accent)] border-2 border-emerald-500'
-            }`}
-          >
-            {isRegistered ? (
-              <>
-                <Check className="w-4 h-4" />
-                Registered
-              </>
-            ) : (
-              'Mark as Registered'
-            )}
-          </button>
+          {contacts.length > 0 && (
+            <div className="bg-[var(--card)] rounded-2xl border p-6 sm:p-8">
+              <h2 className="text-lg font-semibold mb-4">Contact</h2>
+              <div className="space-y-3">
+                {contacts.map((contact) => (
+                  <div key={contact.id} className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--primary)]/60 flex items-center justify-center text-white font-medium">
+                      {contact.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">{contact.name}</p>
+                      <div className="flex flex-wrap gap-3 text-sm">
+                        {contact.email && (
+                          <a href={`mailto:${contact.email}`} className="text-[var(--primary)] hover:underline flex items-center gap-1">
+                            <Mail className="w-3.5 h-3.5" />
+                            {contact.email}
+                          </a>
+                        )}
+                        {contact.phone && (
+                          <a href={`tel:${contact.phone}`} className="text-[var(--primary)] hover:underline flex items-center gap-1">
+                            <Phone className="w-3.5 h-3.5" />
+                            {contact.phone}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-          <button
-            onClick={toggleInterested}
-            disabled={processing || !user}
-            className={`flex-1 flex items-center justify-center gap-2 px-6 py-3.5 font-medium rounded-xl transition-all disabled:opacity-50 ${
-              isInterested
-                ? 'bg-amber-500 text-white hover:bg-amber-600'
-                : 'bg-[var(--muted)] text-[var(--foreground)] hover:bg-[var(--accent)] border-2 border-amber-500'
-            }`}
-          >
-            {isInterested ? (
-              <>
-                <Heart className="w-4 h-4 fill-current" />
-                Interested
-              </>
-            ) : (
-              <>
-                <Heart className="w-4 h-4" />
-                Interested
-              </>
-            )}
-          </button>
+          <div className="bg-[var(--card)] rounded-2xl border p-4">
+            <p className="text-sm text-[var(--muted-foreground)]">
+              <span className="font-medium text-[var(--foreground)]">Created by</span> {event.creator_name || event.creator_email}
+            </p>
+          </div>
         </div>
 
-        {isCreator && (
-          <div className="mt-6 pt-6 border-t">
-            <Link
-              href={`/events/${eventId}/manage`}
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium bg-[var(--muted)] rounded-xl hover:bg-[var(--accent)] transition-colors"
-            >
-              <Settings className="w-4 h-4" />
-              Manage Event
-            </Link>
+        <div className="lg:col-span-2 space-y-6">
+          {event.poster_url && (
+            <div className="sticky top-24">
+              <div className="bg-[var(--card)] rounded-2xl border overflow-hidden">
+                <img 
+                  src={event.poster_url} 
+                  alt={event.title} 
+                  className="w-full h-auto object-cover" 
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="bg-[var(--card)] rounded-2xl border p-6 space-y-4">
+            {isCreator && (
+              <div className="grid grid-cols-2 gap-4 pb-4 border-b">
+                <div>
+                  <p className="text-2xl font-bold text-[var(--primary)]">{event.registered_count}</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">Registered</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-amber-500">{event.interested_count}</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">Interested</p>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {!deadlinePassed && event.registration_link && (
+                <a
+                  href={event.registration_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full px-6 py-3.5 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-xl hover:opacity-90 transition-opacity font-medium"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Register on Form
+                </a>
+              )}
+
+              <button
+                onClick={toggleRegistered}
+                disabled={processing || !user}
+                className={`flex items-center justify-center gap-2 w-full px-6 py-3.5 font-medium rounded-xl transition-all disabled:opacity-50 ${
+                  isRegistered
+                    ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                    : 'bg-[var(--muted)] text-[var(--foreground)] hover:bg-[var(--accent)] border-2 border-emerald-500'
+                }`}
+              >
+                {isRegistered ? (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Registered
+                  </>
+                ) : (
+                  'Mark as Registered'
+                )}
+              </button>
+
+              <button
+                onClick={toggleInterested}
+                disabled={processing || !user}
+                className={`flex items-center justify-center gap-2 w-full px-6 py-3.5 font-medium rounded-xl transition-all disabled:opacity-50 ${
+                  isInterested
+                    ? 'bg-amber-500 text-white hover:bg-amber-600'
+                    : 'bg-[var(--muted)] text-[var(--foreground)] hover:bg-[var(--accent)] border-2 border-amber-500'
+                }`}
+              >
+                {isInterested ? (
+                  <>
+                    <Heart className="w-4 h-4 fill-current" />
+                    Interested
+                  </>
+                ) : (
+                  <>
+                    <Heart className="w-4 h-4" />
+                    Interested
+                  </>
+                )}
+              </button>
+            </div>
+
+            {isCreator && (
+              <Link
+                href={`/events/${eventId}/manage`}
+                className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-sm font-medium bg-[var(--muted)] rounded-xl hover:bg-[var(--accent)] transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Manage Event
+              </Link>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       <Modal

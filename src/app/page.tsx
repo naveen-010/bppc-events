@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Event, FilterState } from '@/types';
+import { Event, FilterState, SortOption } from '@/types';
 import EventCard from '@/components/EventCard';
 import FilterBar from '@/components/FilterBar';
 import { Sparkles } from 'lucide-react';
@@ -13,6 +13,7 @@ export default function Home() {
   const [filters, setFilters] = useState<FilterState>({
     category: 'all',
     search: '',
+    sort: 'event_date_asc',
   });
   const supabase = createClient();
 
@@ -29,8 +30,7 @@ export default function Home() {
         event_tags (tag),
         interested:interested(count),
         registered:registered(count)
-      `)
-      .order('event_date', { ascending: true });
+      `);
 
     if (!error && data) {
       const eventsWithTags = data.map((event: any) => ({
@@ -44,11 +44,30 @@ export default function Home() {
     setLoading(false);
   }
 
-  const filteredEvents = events.filter((event) => {
-    if (filters.category !== 'all' && event.category !== filters.category) return false;
-    if (filters.search && !event.title.toLowerCase().includes(filters.search.toLowerCase())) return false;
-    return true;
-  });
+  const filteredAndSortedEvents = events
+    .filter((event) => {
+      if (filters.category !== 'all' && event.category !== filters.category) return false;
+      if (filters.search && !event.title.toLowerCase().includes(filters.search.toLowerCase())) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      switch (filters.sort) {
+        case 'event_date_asc':
+          return new Date(a.event_date).getTime() - new Date(b.event_date).getTime();
+        case 'event_date_desc':
+          return new Date(b.event_date).getTime() - new Date(a.event_date).getTime();
+        case 'deadline_asc':
+          const aDeadline = a.registration_deadline ? new Date(a.registration_deadline).getTime() : Infinity;
+          const bDeadline = b.registration_deadline ? new Date(b.registration_deadline).getTime() : Infinity;
+          return aDeadline - bDeadline;
+        case 'deadline_desc':
+          const aDeadlineD = a.registration_deadline ? new Date(a.registration_deadline).getTime() : -Infinity;
+          const bDeadlineD = b.registration_deadline ? new Date(b.registration_deadline).getTime() : -Infinity;
+          return bDeadlineD - aDeadlineD;
+        default:
+          return 0;
+      }
+    });
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -73,7 +92,7 @@ export default function Home() {
             <div key={i} className="bg-[var(--card)] rounded-2xl h-72 animate-pulse" />
           ))}
         </div>
-      ) : filteredEvents.length === 0 ? (
+      ) : filteredAndSortedEvents.length === 0 ? (
         <div className="text-center py-20">
           <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-[var(--muted)] flex items-center justify-center">
             <Sparkles className="w-8 h-8 text-[var(--muted-foreground)]" />
@@ -87,7 +106,7 @@ export default function Home() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredEvents.map((event) => (
+          {filteredAndSortedEvents.map((event) => (
             <EventCard key={event.id} event={event} />
           ))}
         </div>

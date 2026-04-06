@@ -31,7 +31,10 @@ export interface User {
   avatar_url: string | null;
 }
 
+export type SortOption = 'event_date_asc' | 'event_date_desc' | 'deadline_asc' | 'deadline_desc';
+
 export type FilterState = {
   category: Category | 'all';
   search: string;
+  sort: SortOption;
 };
