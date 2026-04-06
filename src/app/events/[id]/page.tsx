@@ -6,6 +6,12 @@ import { useParams, useRouter } from 'next/navigation';
 import { formatDateTime, isDeadlinePassed, isBITSEmail } from '@/lib/utils';
 import Modal from '@/components/Modal';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { 
+  Calendar, MapPin, Link as LinkIcon, Clock, User, Phone, 
+  Users, Heart, Check, ArrowLeft, Settings, ExternalLink 
+} from 'lucide-react';
 
 export default function EventDetail() {
   const params = useParams();
@@ -17,9 +23,7 @@ export default function EventDetail() {
   const [isInterested, setIsInterested] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showRegisterConfirm, setShowRegisterConfirm] = useState(false);
-  
   const supabase = createClient();
 
   useEffect(() => {
@@ -92,31 +96,31 @@ export default function EventDetail() {
     fetchEvent();
   }
 
-  async function confirmRegistration() {
+  async function toggleRegistered() {
     if (!user) {
       router.push('/auth/login');
       return;
     }
-    setShowRegisterConfirm(true);
-  }
-
-  async function handleRegisterConfirm() {
+    
     setProcessing(true);
-    await supabase.from('registered').insert({ user_id: user.id, event_id: eventId });
-    setIsRegistered(true);
-    setShowRegisterConfirm(false);
-    setShowRegisterModal(false);
+    
+    if (isRegistered) {
+      await supabase.from('registered').delete().eq('user_id', user.id).eq('event_id', eventId);
+    } else {
+      await supabase.from('registered').insert({ user_id: user.id, event_id: eventId });
+    }
+    
+    setIsRegistered(!isRegistered);
     setProcessing(false);
     fetchEvent();
   }
 
   if (loading || !event) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 py-10">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 w-2/3 bg-gray-200 rounded" />
-          <div className="h-4 w-1/3 bg-gray-200 rounded" />
-          <div className="h-64 bg-gray-200 rounded" />
+          <div className="h-8 w-2/3 bg-[var(--muted)] rounded" />
+          <div className="h-64 bg-[var(--muted)] rounded-2xl" />
         </div>
       </div>
     );
@@ -126,104 +130,116 @@ export default function EventDetail() {
   const isCreator = user?.id === event.creator_id;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <Link
+        href="/"
+        className="inline-flex items-center gap-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] mb-6 transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to events
+      </Link>
+
       {event.poster_url && (
-        <div className="aspect-video rounded-xl overflow-hidden mb-6 bg-gray-100">
+        <div className="aspect-video rounded-2xl overflow-hidden mb-8 bg-gradient-to-br from-[var(--muted)] to-[var(--accent)]">
           <img src={event.poster_url} alt={event.title} className="w-full h-full object-cover" />
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-700 capitalize mb-2">
-              {event.category}
-            </span>
-            {event.is_online && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-700 ml-2">
-                Online
-              </span>
-            )}
-          </div>
-          <span className={`text-lg font-semibold ${event.fee === 0 ? 'text-green-600' : 'text-gray-900'}`}>
-            {event.fee === 0 ? 'Free' : `₹${event.fee}`}
+      <div className="bg-[var(--card)] rounded-2xl border p-6 sm:p-8 mb-6">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-[var(--primary)]/10 text-[var(--primary)]">
+            {event.category}
           </span>
+          {event.is_online && (
+            <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-500/10 text-emerald-600">
+              Online Event
+            </span>
+          )}
         </div>
 
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">{event.title}</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6">{event.title}</h1>
 
-        {event.description && (
-          <p className="text-gray-600 mb-6 whitespace-pre-wrap">{event.description}</p>
-        )}
-
-        <div className="grid sm:grid-cols-2 gap-4 mb-6">
-          <div className="flex items-center gap-3 text-gray-700">
-            <span className="text-xl">📅</span>
+        <div className="grid sm:grid-cols-2 gap-6 mb-8">
+          <div className="flex items-start gap-4">
+            <div className="p-3 rounded-xl bg-[var(--primary)]/10">
+              <Calendar className="w-5 h-5 text-[var(--primary)]" />
+            </div>
             <div>
-              <p className="font-medium">{formatDateTime(event.event_date)}</p>
-              <p className="text-sm text-gray-500">Event Date & Time</p>
+              <p className="font-medium">Event Date & Time</p>
+              <p className="text-[var(--muted-foreground)]">{formatDateTime(event.event_date)}</p>
             </div>
           </div>
           
           {event.location && (
-            <div className="flex items-center gap-3 text-gray-700">
-              <span className="text-xl">📍</span>
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-xl bg-[var(--primary)]/10">
+                <MapPin className="w-5 h-5 text-[var(--primary)]" />
+              </div>
               <div>
-                <p className="font-medium">{event.location}</p>
-                <p className="text-sm text-gray-500">Location</p>
+                <p className="font-medium">Location</p>
+                <p className="text-[var(--muted-foreground)]">{event.location}</p>
               </div>
             </div>
           )}
         </div>
 
         {event.registration_deadline && (
-          <div className={`flex items-center gap-3 p-4 rounded-lg ${deadlinePassed ? 'bg-red-50' : 'bg-gray-50'}`}>
-            <span className="text-xl">⏰</span>
+          <div className={`flex items-start gap-4 p-4 rounded-xl mb-6 ${deadlinePassed ? 'bg-red-500/5' : 'bg-[var(--muted)]'}`}>
+            <div className={`p-3 rounded-xl ${deadlinePassed ? 'bg-red-500/10' : 'bg-[var(--accent)]'}`}>
+              <Clock className={`w-5 h-5 ${deadlinePassed ? 'text-red-500' : 'text-[var(--muted-foreground)]'}`} />
+            </div>
             <div>
-              <p className={`font-medium ${deadlinePassed ? 'text-red-600' : 'text-gray-900'}`}>
-                Registration Deadline: {formatDateTime(event.registration_deadline)}
+              <p className={`font-medium ${deadlinePassed ? 'text-red-500' : ''}`}>
+                Registration Deadline
               </p>
-              <p className="text-sm text-gray-500">
-                {deadlinePassed ? 'Registration has closed' : 'Register before this date'}
+              <p className={`${deadlinePassed ? 'text-red-500/70' : 'text-[var(--muted-foreground)]'}`}>
+                {formatDateTime(event.registration_deadline)}
               </p>
             </div>
           </div>
         )}
 
+        {event.description && (
+          <div className="prose prose-neutral dark:prose-invert max-w-none mb-8">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{event.description}</ReactMarkdown>
+          </div>
+        )}
+
         {event.tags && event.tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-6">
+          <div className="flex flex-wrap gap-2 mb-6">
             {event.tags.map((tag: string) => (
-              <span key={tag} className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+              <span key={tag} className="text-sm px-3 py-1.5 rounded-lg bg-[var(--muted)] text-[var(--muted-foreground)]">
                 {tag}
               </span>
             ))}
           </div>
         )}
 
-        <div className="flex items-center gap-4 mt-6 pt-6 border-t border-gray-100">
-          <div>
-            <p className="text-sm text-gray-500">Organized by</p>
-            <p className="font-medium">{event.creator_name || event.creator_email}</p>
+        <div className="flex flex-wrap items-center gap-6 pt-6 border-t text-sm">
+          <div className="flex items-center gap-2">
+            <User className="w-4 h-4 text-[var(--muted-foreground)]" />
+            <span className="text-[var(--muted-foreground)]">Organized by</span>
+            <span className="font-medium">{event.creator_name || event.creator_email}</span>
           </div>
           {event.creator_phone && (
-            <div className="ml-auto">
-              <p className="text-sm text-gray-500">Contact</p>
-              <p className="font-medium">{event.creator_phone}</p>
+            <div className="flex items-center gap-2">
+              <Phone className="w-4 h-4 text-[var(--muted-foreground)]" />
+              <span className="font-medium">{event.creator_phone}</span>
             </div>
           )}
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-[var(--card)] rounded-2xl border p-6 sm:p-8">
+        <div className="flex items-center justify-between mb-6">
           <div className="flex gap-6">
             <div>
-              <p className="text-2xl font-bold text-indigo-600">{event.interested_count}</p>
-              <p className="text-sm text-gray-500">Interested</p>
+              <p className="text-2xl font-bold text-[var(--primary)]">{event.registered_count}</p>
+              <p className="text-sm text-[var(--muted-foreground)]">Registered</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-green-600">{event.registered_count}</p>
-              <p className="text-sm text-gray-500">Registered</p>
+              <p className="text-2xl font-bold text-amber-500">{event.interested_count}</p>
+              <p className="text-sm text-[var(--muted-foreground)]">Interested</p>
             </div>
           </div>
         </div>
@@ -234,51 +250,63 @@ export default function EventDetail() {
               href={event.registration_link}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700"
+              className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-xl hover:opacity-90 transition-opacity font-medium"
             >
-              Register on External Form
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
+              <ExternalLink className="w-4 h-4" />
+              Register on Form
             </a>
           )}
 
-          {!isRegistered && (
-            <button
-              onClick={confirmRegistration}
-              disabled={processing || !user}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50"
-            >
-              {processing ? 'Processing...' : '✓ I have Registered'}
-            </button>
-          )}
-
-          {isRegistered && (
-            <div className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-green-100 text-green-700 font-medium rounded-lg">
-              ✓ You are Registered
-            </div>
-          )}
+          <button
+            onClick={toggleRegistered}
+            disabled={processing || !user}
+            className={`flex-1 flex items-center justify-center gap-2 px-6 py-3.5 font-medium rounded-xl transition-all disabled:opacity-50 ${
+              isRegistered
+                ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                : 'bg-[var(--muted)] text-[var(--foreground)] hover:bg-[var(--accent)] border-2 border-emerald-500'
+            }`}
+          >
+            {isRegistered ? (
+              <>
+                <Check className="w-4 h-4" />
+                Registered
+              </>
+            ) : (
+              'Mark as Registered'
+            )}
+          </button>
 
           <button
             onClick={toggleInterested}
             disabled={processing || !user}
-            className={`flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 font-medium rounded-lg border-2 transition-colors disabled:opacity-50 ${
+            className={`flex-1 flex items-center justify-center gap-2 px-6 py-3.5 font-medium rounded-xl transition-all disabled:opacity-50 ${
               isInterested
-                ? 'bg-amber-50 border-amber-400 text-amber-700'
-                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                ? 'bg-amber-500 text-white hover:bg-amber-600'
+                : 'bg-[var(--muted)] text-[var(--foreground)] hover:bg-[var(--accent)] border-2 border-amber-500'
             }`}
           >
-            {isInterested ? '★ Interested' : '☆ Interested'}
+            {isInterested ? (
+              <>
+                <Heart className="w-4 h-4 fill-current" />
+                Interested
+              </>
+            ) : (
+              <>
+                <Heart className="w-4 h-4" />
+                Interested
+              </>
+            )}
           </button>
         </div>
 
         {isCreator && (
-          <div className="mt-6 pt-6 border-t border-gray-100">
+          <div className="mt-6 pt-6 border-t">
             <Link
               href={`/events/${eventId}/manage`}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium bg-[var(--muted)] rounded-xl hover:bg-[var(--accent)] transition-colors"
             >
-              Manage Event & Send Updates
+              <Settings className="w-4 h-4" />
+              Manage Event
             </Link>
           </div>
         )}
@@ -289,20 +317,20 @@ export default function EventDetail() {
         onClose={() => setShowRegisterConfirm(false)}
         title="Confirm Registration"
       >
-        <p className="text-gray-600 mb-6">
+        <p className="text-[var(--muted-foreground)] mb-6">
           Have you completed registration using the external form? This will mark you as registered for this event.
         </p>
         <div className="flex gap-3">
           <button
             onClick={() => setShowRegisterConfirm(false)}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="flex-1 px-4 py-2.5 border rounded-xl hover:bg-[var(--muted)] transition-colors"
           >
             Not Yet
           </button>
           <button
-            onClick={handleRegisterConfirm}
+            onClick={toggleRegistered}
             disabled={processing}
-            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+            className="flex-1 px-4 py-2.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 disabled:opacity-50"
           >
             Yes, I am Registered
           </button>

@@ -33,6 +33,5 @@ export interface User {
 
 export type FilterState = {
   category: Category | 'all';
-  fee: 'all' | 'free' | 'paid';
   search: string;
 };

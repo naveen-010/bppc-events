@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "BPPC Events | BITS Pilani",
@@ -13,15 +14,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="min-h-full flex flex-col bg-gray-50">
-        <Navbar />
-        <main className="flex-1">{children}</main>
-        <footer className="bg-white border-t border-gray-200 py-6">
-          <div className="max-w-7xl mx-auto px-4 text-center text-sm text-gray-500">
-            BPPC Events Portal · BITS Pilani, Pilani Campus
-          </div>
-        </footer>
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen antialiased">
+        <ThemeProvider>
+          <Navbar />
+          <main className="min-h-[calc(100vh-8rem)]">{children}</main>
+          <footer className="border-t py-8 text-center text-sm text-[var(--muted-foreground)]">
+            <div className="max-w-7xl mx-auto px-4">
+              <p>BPPC Events Portal · BITS Pilani, Pilani Campus</p>
+            </div>
+          </footer>
+        </ThemeProvider>
       </body>
     </html>
   );

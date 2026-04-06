@@ -1,82 +1,84 @@
 import Link from 'next/link';
 import { Event } from '@/types';
 import { formatDateTime, isDeadlinePassed, getRelativeTime } from '@/lib/utils';
+import { MapPin, Clock, Users, ExternalLink } from 'lucide-react';
 
 interface EventCardProps {
   event: Event;
-  showActions?: boolean;
 }
 
-export default function EventCard({ event, showActions = true }: EventCardProps) {
+export default function EventCard({ event }: EventCardProps) {
   const deadlinePassed = isDeadlinePassed(event.registration_deadline);
 
   return (
-    <Link href={`/events/${event.id}`} className="block group">
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+    <Link href={`/events/${event.id}`} className="group block">
+      <div className="bg-[var(--card)] rounded-2xl border overflow-hidden hover:shadow-lg hover:border-[var(--primary)]/30 transition-all duration-300">
         {event.poster_url && (
-          <div className="aspect-video bg-gray-100 overflow-hidden">
+          <div className="aspect-[16/10] bg-gradient-to-br from-[var(--muted)] to-[var(--accent)] overflow-hidden">
             <img
               src={event.poster_url}
               alt={event.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           </div>
         )}
         
-        <div className="p-4">
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 capitalize">
+        <div className="p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-[var(--primary)]/10 text-[var(--primary)]">
               {event.category}
             </span>
             {event.is_online && (
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-600">
                 Online
               </span>
             )}
           </div>
 
-          <h3 className="text-lg font-semibold text-gray-900 mb-1 line-clamp-2 group-hover:text-indigo-600 transition-colors">
+          <h3 className="text-lg font-semibold mb-2 line-clamp-2 group-hover:text-[var(--primary)] transition-colors">
             {event.title}
           </h3>
 
           {event.description && (
-            <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+            <p className="text-sm text-[var(--muted-foreground)] mb-4 line-clamp-2">
               {event.description}
             </p>
           )}
 
-          <div className="space-y-1 text-sm text-gray-500">
+          <div className="space-y-2 text-sm text-[var(--muted-foreground)]">
             <div className="flex items-center gap-2">
-              <span>📅</span>
+              <Clock className="w-4 h-4" />
               <span>{formatDateTime(event.event_date)}</span>
             </div>
             {event.location && (
               <div className="flex items-center gap-2">
-                <span>📍</span>
-                <span>{event.location}</span>
-              </div>
-            )}
-            {event.registration_deadline && (
-              <div className={`flex items-center gap-2 ${deadlinePassed ? 'text-red-500' : ''}`}>
-                <span>⏰</span>
-                <span>Register by: {new Date(event.registration_deadline).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                <MapPin className="w-4 h-4" />
+                <span className="truncate">{event.location}</span>
               </div>
             )}
           </div>
 
-          <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-            <span className={`text-sm font-medium ${deadlinePassed ? 'text-red-500' : 'text-indigo-600'}`}>
-              {deadlinePassed ? 'Registration Closed' : getRelativeTime(event.registration_deadline!)}
-            </span>
-            <span className={`text-sm font-medium ${event.fee === 0 ? 'text-green-600' : 'text-gray-900'}`}>
-              {event.fee === 0 ? 'Free' : `₹${event.fee}`}
-            </span>
+          <div className="mt-4 pt-4 border-t flex items-center justify-between">
+            <div className="flex items-center gap-3 text-xs text-[var(--muted-foreground)]">
+              <span className="flex items-center gap-1">
+                <Users className="w-3.5 h-3.5" />
+                {event.registered_count || 0}
+              </span>
+              {event.registration_deadline && (
+                <span className={`${deadlinePassed ? 'text-red-500' : ''}`}>
+                  {deadlinePassed ? 'Closed' : getRelativeTime(event.registration_deadline)}
+                </span>
+              )}
+            </div>
+            {event.registration_link && !deadlinePassed && (
+              <ExternalLink className="w-4 h-4 text-[var(--muted-foreground)]" />
+            )}
           </div>
 
           {event.tags && event.tags.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1">
-              {event.tags.map((tag) => (
-                <span key={tag} className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {event.tags.slice(0, 3).map((tag) => (
+                <span key={tag} className="text-xs px-2 py-0.5 rounded-md bg-[var(--muted)] text-[var(--muted-foreground)]">
                   {tag}
                 </span>
               ))}

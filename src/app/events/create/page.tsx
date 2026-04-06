@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { CATEGORIES, SUGGESTED_TAGS, isBITSEmail } from '@/lib/utils';
 import Link from 'next/link';
+import { Upload, X, Loader2 } from 'lucide-react';
 
 export default function CreateEvent() {
   const router = useRouter();
@@ -12,6 +13,7 @@ export default function CreateEvent() {
   const [user, setUser] = useState<any>(null);
   const [checking, setChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const supabase = createClient();
 
   const [formData, setFormData] = useState({
@@ -25,7 +27,6 @@ export default function CreateEvent() {
     registration_link: '',
     registration_deadline_date: '',
     registration_deadline_time: '',
-    fee: '0',
     poster_url: '',
     creator_phone: '',
     tags: [] as string[],
@@ -53,6 +54,33 @@ export default function CreateEvent() {
     setUser(data.user);
     setChecking(false);
   }
+
+  const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    setUploading(true);
+    
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+
+    const { data, error: uploadError } = await supabase.storage
+      .from('event-posters')
+      .upload(fileName, file);
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      setUploading(false);
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('event-posters')
+      .getPublicUrl(fileName);
+
+    setFormData(prev => ({ ...prev, poster_url: publicUrl }));
+    setUploading(false);
+  }, [user, supabase]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -86,7 +114,7 @@ export default function CreateEvent() {
         is_online: formData.is_online,
         registration_link: formData.registration_link || null,
         registration_deadline: regDeadline,
-        fee: parseFloat(formData.fee) || 0,
+        fee: 0,
         poster_url: formData.poster_url || null,
         creator_id: user.id,
         creator_email: user.email,
@@ -134,10 +162,10 @@ export default function CreateEvent() {
 
   if (checking) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="max-w-2xl mx-auto px-4 py-10">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 w-1/3 bg-gray-200 rounded" />
-          <div className="h-64 bg-gray-200 rounded" />
+          <div className="h-8 w-1/3 bg-[var(--muted)] rounded" />
+          <div className="h-96 bg-[var(--muted)] rounded-2xl" />
         </div>
       </div>
     );
@@ -145,12 +173,11 @@ export default function CreateEvent() {
 
   if (error && !user) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-          <div className="text-4xl mb-4">🔒</div>
-          <h2 className="text-lg font-semibold text-red-800 mb-2">Access Restricted</h2>
-          <p className="text-red-600 mb-4">{error}</p>
-          <Link href="/auth/login" className="text-indigo-600 hover:text-indigo-800">
+      <div className="max-w-2xl mx-auto px-4 py-10">
+        <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-8 text-center">
+          <h2 className="text-lg font-semibold mb-2">Access Restricted</h2>
+          <p className="text-red-500 mb-4">{error}</p>
+          <Link href="/auth/login" className="text-[var(--primary)] hover:underline">
             Login with BITS Email
           </Link>
         </div>
@@ -159,49 +186,50 @@ export default function CreateEvent() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Create New Event</h1>
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <h1 className="text-2xl font-bold mb-8">Create New Event</h1>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+        <div className="mb-6 p-4 bg-red-500/5 border border-red-500/20 rounded-xl text-red-500">
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
-          <h2 className="font-semibold text-gray-900">Basic Information</h2>
+      <form onSubmit={handleSubmit} className="space-y-8">
+        <div className="bg-[var(--card)] rounded-2xl border p-6 space-y-5">
+          <h2 className="font-semibold text-lg">Event Details</h2>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Event Title *</label>
+            <label className="block text-sm font-medium mb-2">Event Title *</label>
             <input
               type="text"
               required
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-4 py-3 bg-[var(--background)] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
               placeholder="e.g., Workshop on Machine Learning"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-sm font-medium mb-2">Description</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="Describe your event..."
+              rows={6}
+              className="w-full px-4 py-3 bg-[var(--background)] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent resize-none"
+              placeholder="Describe your event... (Markdown supported)"
             />
+            <p className="text-xs text-[var(--muted-foreground)] mt-1">Supports Markdown formatting</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+            <label className="block text-sm font-medium mb-2">Category *</label>
             <select
               required
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-4 py-3 bg-[var(--background)] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
             >
               {CATEGORIES.map((cat) => (
                 <option key={cat.value} value={cat.value}>{cat.label}</option>
@@ -210,142 +238,160 @@ export default function CreateEvent() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Poster Image URL</label>
-            <input
-              type="url"
-              value={formData.poster_url}
-              onChange={(e) => setFormData({ ...formData, poster_url: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="https://..."
-            />
+            <label className="block text-sm font-medium mb-2">Event Poster</label>
+            <div className="border-2 border-dashed rounded-xl p-6 text-center">
+              {formData.poster_url ? (
+                <div className="relative">
+                  <img src={formData.poster_url} alt="Preview" className="max-h-48 mx-auto rounded-lg" />
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, poster_url: '' })}
+                    className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    disabled={uploading}
+                  />
+                  <div className="flex flex-col items-center gap-2 text-[var(--muted-foreground)]">
+                    {uploading ? (
+                      <>
+                        <Loader2 className="w-8 h-8 animate-spin" />
+                        <span>Uploading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-8 h-8" />
+                        <span className="text-sm">Click to upload or drag and drop</span>
+                        <span className="text-xs">PNG, JPG up to 5MB</span>
+                      </>
+                    )}
+                  </div>
+                </label>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
-          <h2 className="font-semibold text-gray-900">Date & Time</h2>
+        <div className="bg-[var(--card)] rounded-2xl border p-6 space-y-5">
+          <h2 className="font-semibold text-lg">Date & Time</h2>
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Event Date *</label>
+              <label className="block text-sm font-medium mb-2">Event Date *</label>
               <input
                 type="date"
                 required
                 value={formData.event_date}
                 onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-4 py-3 bg-[var(--background)] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Event Time</label>
+              <label className="block text-sm font-medium mb-2">Event Time</label>
               <input
                 type="time"
                 value={formData.event_time}
                 onChange={(e) => setFormData({ ...formData, event_time: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-4 py-3 bg-[var(--background)] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
               />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
-          <h2 className="font-semibold text-gray-900">Location & Registration</h2>
+        <div className="bg-[var(--card)] rounded-2xl border p-6 space-y-5">
+          <h2 className="font-semibold text-lg">Location & Registration</h2>
 
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={formData.is_online}
-                onChange={(e) => setFormData({ ...formData, is_online: e.target.checked })}
-                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-              />
-              <span className="text-sm text-gray-700">This is an online event</span>
-            </label>
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="is_online"
+              checked={formData.is_online}
+              onChange={(e) => setFormData({ ...formData, is_online: e.target.checked })}
+              className="w-5 h-5 rounded border-[var(--border)] text-[var(--primary)] focus:ring-[var(--ring)]"
+            />
+            <label htmlFor="is_online" className="text-sm font-medium">This is an online event</label>
           </div>
 
           {!formData.is_online && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+              <label className="block text-sm font-medium mb-2">Location</label>
               <input
                 type="text"
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-4 py-3 bg-[var(--background)] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
                 placeholder="e.g., LT-1, BITS Pilani"
               />
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Registration Link</label>
+            <label className="block text-sm font-medium mb-2">Registration Link</label>
             <input
               type="url"
               value={formData.registration_link}
               onChange={(e) => setFormData({ ...formData, registration_link: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-4 py-3 bg-[var(--background)] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
               placeholder="https://forms.google.com/..."
             />
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Registration Deadline Date</label>
+              <label className="block text-sm font-medium mb-2">Registration Deadline Date</label>
               <input
                 type="date"
                 value={formData.registration_deadline_date}
                 onChange={(e) => setFormData({ ...formData, registration_deadline_date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-4 py-3 bg-[var(--background)] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Deadline Time</label>
+              <label className="block text-sm font-medium mb-2">Deadline Time</label>
               <input
                 type="time"
                 value={formData.registration_deadline_time}
                 onChange={(e) => setFormData({ ...formData, registration_deadline_time: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-4 py-3 bg-[var(--background)] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
               />
             </div>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Registration Fee (₹)</label>
-            <input
-              type="number"
-              min="0"
-              value={formData.fee}
-              onChange={(e) => setFormData({ ...formData, fee: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              placeholder="0 for free"
-            />
-          </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
-          <h2 className="font-semibold text-gray-900">Contact & Tags</h2>
+        <div className="bg-[var(--card)] rounded-2xl border p-6 space-y-5">
+          <h2 className="font-semibold text-lg">Contact & Tags</h2>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Contact Phone (for queries)</label>
+            <label className="block text-sm font-medium mb-2">Contact Phone (for queries)</label>
             <input
               type="tel"
               value={formData.creator_phone}
               onChange={(e) => setFormData({ ...formData, creator_phone: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-4 py-3 bg-[var(--background)] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
               placeholder="+91 98765 43210"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tags</label>
-            <div className="flex flex-wrap gap-2 mb-2">
+            <label className="block text-sm font-medium mb-2">Tags</label>
+            <div className="flex flex-wrap gap-2 mb-3">
               {SUGGESTED_TAGS.map((tag) => (
                 <button
                   key={tag}
                   type="button"
                   onClick={() => toggleTag(tag)}
-                  className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                  className={`px-3 py-1.5 text-sm rounded-lg transition-all ${
                     formData.tags.includes(tag)
-                      ? 'bg-indigo-100 text-indigo-700 border-2 border-indigo-300'
-                      : 'bg-gray-100 text-gray-600 border-2 border-transparent hover:bg-gray-200'
+                      ? 'bg-[var(--primary)] text-white'
+                      : 'bg-[var(--muted)] text-[var(--muted-foreground)] hover:bg-[var(--accent)]'
                   }`}
                 >
                   {tag}
@@ -358,19 +404,19 @@ export default function CreateEvent() {
                 value={formData.customTag}
                 onChange={(e) => setFormData({ ...formData, customTag: e.target.value })}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomTag())}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="flex-1 px-4 py-3 bg-[var(--background)] border rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent"
                 placeholder="Add custom tag"
               />
               <button
                 type="button"
                 onClick={addCustomTag}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                className="px-5 py-3 bg-[var(--muted)] rounded-xl hover:bg-[var(--accent)] transition-colors font-medium"
               >
                 Add
               </button>
             </div>
             {formData.tags.length > 0 && (
-              <p className="text-sm text-gray-500 mt-2">Selected: {formData.tags.join(', ')}</p>
+              <p className="text-sm text-[var(--muted-foreground)] mt-2">Selected: {formData.tags.join(', ')}</p>
             )}
           </div>
         </div>
@@ -378,7 +424,7 @@ export default function CreateEvent() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full px-6 py-3 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+          className="w-full px-6 py-4 bg-[var(--primary)] text-[var(--primary-foreground)] font-medium rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {loading ? 'Creating Event...' : 'Create Event'}
         </button>
