@@ -70,25 +70,35 @@ export default function CreateEvent() {
     if (!file || !user) return;
 
     setUploading(true);
+    setError(null);
     
     const fileExt = file.name.split('.').pop();
     const fileName = `${user.id}/${Date.now()}.${fileExt}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('event-posters')
-      .upload(fileName, file);
+    try {
+      const { data, error: uploadError } = await supabase.storage
+        .from('event-posters')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-    if (uploadError) {
-      console.error('Upload error:', uploadError);
-      setUploading(false);
-      return;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        setError(`Upload failed: ${uploadError.message}`);
+        setUploading(false);
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('event-posters')
+        .getPublicUrl(fileName);
+
+      setFormData(prev => ({ ...prev, poster_url: publicUrl }));
+    } catch (err: any) {
+      console.error('Upload error:', err);
+      setError(`Upload failed: ${err.message}`);
     }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('event-posters')
-      .getPublicUrl(fileName);
-
-    setFormData(prev => ({ ...prev, poster_url: publicUrl }));
     setUploading(false);
   }, [user, supabase]);
 
