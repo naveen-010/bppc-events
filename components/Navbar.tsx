@@ -4,13 +4,15 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useTheme } from 'next-themes';
-import { Menu, X, Plus, LayoutDashboard, LogOut, User, Sun, Moon } from 'lucide-react';
+import { Menu, X, Plus, LayoutDashboard, LogOut, User, Sun, Moon, MessageSquare } from 'lucide-react';
+import FeedbackModal from './FeedbackModal';
 
 export default function Navbar() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const supabase = createClient();
 
@@ -168,6 +170,13 @@ export default function Navbar() {
                 <span>Dashboard</span>
               </Link>
               <button
+                onClick={() => { setMobileMenuOpen(false); setFeedbackOpen(true); }}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[var(--accent)] transition-colors text-left"
+              >
+                <MessageSquare className="w-5 h-5" />
+                <span>Send Feedback</span>
+              </button>
+              <button
                 onClick={handleLogout}
                 className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[var(--accent)] transition-colors text-left"
               >
@@ -178,6 +187,5 @@ export default function Navbar() {
           </div>
         )}
       </div>
+      <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </nav>
-  );
-}
