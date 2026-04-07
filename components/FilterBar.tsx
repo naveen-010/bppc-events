@@ -45,10 +45,10 @@ export default function FilterBar({ filters, onFilterChange }: FilterBarProps) {
             onChange={(e) => onFilterChange({ ...filters, sort: e.target.value as SortOption })}
             className="px-4 py-3 bg-[var(--card)] border rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:border-transparent cursor-pointer"
           >
-            <option value="event_date_asc">Soonest Event</option>
-            <option value="event_date_desc">Latest Event</option>
-            <option value="deadline_asc">Deadline: Earliest First</option>
-            <option value="deadline_desc">Deadline: Latest First</option>
+            <option value="event_date_asc">Date: Upcoming First</option>
+            <option value="event_date_desc">Date: Most Recent</option>
+            <option value="deadline_asc">Registration: Closing Soon</option>
+            <option value="deadline_desc">Registration: Closing Later</option>
           </select>
         </div>
       </div>

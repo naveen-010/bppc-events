@@ -44,6 +44,8 @@ export default function Home() {
     setLoading(false);
   }
 
+  const now = new Date().getTime();
+
   const filteredAndSortedEvents = events
     .filter((event) => {
       if (filters.category !== 'all' && event.category !== filters.category) return false;
@@ -58,16 +60,32 @@ export default function Home() {
     .sort((a, b) => {
       switch (filters.sort) {
         case 'event_date_asc':
-          return new Date(a.event_date).getTime() - new Date(b.event_date).getTime();
+          const aTime = a.event_date ? new Date(a.event_date).getTime() : Infinity;
+          const bTime = b.event_date ? new Date(b.event_date).getTime() : Infinity;
+          if (aTime === Infinity && bTime === Infinity) return 0;
+          if (aTime === Infinity) return 1;
+          if (bTime === Infinity) return -1;
+          return aTime - bTime;
         case 'event_date_desc':
-          return new Date(b.event_date).getTime() - new Date(a.event_date).getTime();
+          const aTimeD = a.event_date ? new Date(a.event_date).getTime() : -Infinity;
+          const bTimeD = b.event_date ? new Date(b.event_date).getTime() : -Infinity;
+          if (aTimeD === -Infinity && bTimeD === -Infinity) return 0;
+          if (aTimeD === -Infinity) return 1;
+          if (bTimeD === -Infinity) return -1;
+          return bTimeD - aTimeD;
         case 'deadline_asc':
           const aDeadline = a.registration_deadline ? new Date(a.registration_deadline).getTime() : Infinity;
           const bDeadline = b.registration_deadline ? new Date(b.registration_deadline).getTime() : Infinity;
+          if (aDeadline === Infinity && bDeadline === Infinity) return 0;
+          if (aDeadline === Infinity) return 1;
+          if (bDeadline === Infinity) return -1;
           return aDeadline - bDeadline;
         case 'deadline_desc':
           const aDeadlineD = a.registration_deadline ? new Date(a.registration_deadline).getTime() : -Infinity;
           const bDeadlineD = b.registration_deadline ? new Date(b.registration_deadline).getTime() : -Infinity;
+          if (aDeadlineD === -Infinity && bDeadlineD === -Infinity) return 0;
+          if (aDeadlineD === -Infinity) return 1;
+          if (bDeadlineD === -Infinity) return -1;
           return bDeadlineD - aDeadlineD;
         default:
           return 0;
