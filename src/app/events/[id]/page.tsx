@@ -10,7 +10,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { 
   Calendar, MapPin, Clock, User, Phone, Mail,
-  Heart, Check, ArrowLeft, Settings, ExternalLink 
+  Heart, Check, ArrowLeft, Settings, ExternalLink, Pencil, Trash2
 } from 'lucide-react';
 
 interface Contact {
@@ -150,13 +150,27 @@ export default function EventDetail() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <Link
-        href="/"
-        className="inline-flex items-center gap-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] mb-6 transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back to events
-      </Link>
+      <div className="flex items-center justify-between mb-6">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to events</span>
+        </Link>
+        
+        {isCreator && (
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/events/${eventId}/manage`}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-[var(--primary)] text-white rounded-xl hover:opacity-90 transition-opacity"
+            >
+              <Settings className="w-4 h-4" />
+              Manage Event
+            </Link>
+          </div>
+        )}
+      </div>
 
       <div className="grid lg:grid-cols-5 gap-6 lg:gap-8">
         <div className="lg:col-span-3 space-y-6">
@@ -354,16 +368,6 @@ export default function EventDetail() {
                 )}
               </button>
             </div>
-
-            {isCreator && (
-              <Link
-                href={`/events/${eventId}/manage`}
-                className="flex items-center justify-center gap-2 w-full px-4 py-2.5 text-sm font-medium bg-[var(--muted)] rounded-xl hover:bg-[var(--accent)] transition-colors"
-              >
-                <Settings className="w-4 h-4" />
-                Manage Event
-              </Link>
-            )}
           </div>
         </div>
       </div>

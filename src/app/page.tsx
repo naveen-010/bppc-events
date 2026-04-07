@@ -47,7 +47,12 @@ export default function Home() {
   const filteredAndSortedEvents = events
     .filter((event) => {
       if (filters.category !== 'all' && event.category !== filters.category) return false;
-      if (filters.search && !event.title.toLowerCase().includes(filters.search.toLowerCase())) return false;
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        const matchesTitle = event.title.toLowerCase().includes(searchLower);
+        const matchesDescription = event.description?.toLowerCase().includes(searchLower);
+        if (!matchesTitle && !matchesDescription) return false;
+      }
       return true;
     })
     .sort((a, b) => {
