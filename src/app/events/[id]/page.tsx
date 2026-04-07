@@ -30,6 +30,7 @@ export default function EventDetail() {
   const [user, setUser] = useState<any>(null);
   const [isInterested, setIsInterested] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [isCreator, setIsCreator] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [showRegisterConfirm, setShowRegisterConfirm] = useState(false);
   const supabase = createClient();
@@ -38,6 +39,12 @@ export default function EventDetail() {
     fetchEvent();
     fetchUser();
   }, [eventId]);
+
+  useEffect(() => {
+    if (user && event) {
+      setIsCreator(user.id === event.creator_id);
+    }
+  }, [user, event]);
 
   async function fetchUser() {
     const { data } = await supabase.auth.getUser();
@@ -146,7 +153,6 @@ export default function EventDetail() {
   }
 
   const deadlinePassed = isDeadlinePassed(event.registration_deadline);
-  const isCreator = user?.id === event.creator_id;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
