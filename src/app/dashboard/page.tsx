@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import EventCard from '@/components/EventCard';
 import { Event } from '@/types';
-import { Heart, Check, Plus } from 'lucide-react';
+import { Heart, Check, Plus, Calendar } from 'lucide-react';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -89,7 +89,7 @@ export default function Dashboard() {
         <p className="text-[var(--muted-foreground)]">Track your events and registrations</p>
       </div>
 
-      <div className="flex gap-2 mb-8">
+      <div className="flex flex-wrap items-center gap-2 mb-8">
         <button
           onClick={() => setTab('registered')}
           className={`flex items-center gap-2 px-5 py-2.5 font-medium rounded-xl transition-all ${
@@ -112,6 +112,15 @@ export default function Dashboard() {
           <Heart className="w-4 h-4" />
           Interested
         </button>
+        <div className="ml-auto">
+          <Link
+            href="/dashboard/creations"
+            className="flex items-center gap-2 px-5 py-2.5 font-medium rounded-xl bg-[var(--muted)] hover:bg-[var(--accent)] transition-all"
+          >
+            <Calendar className="w-4 h-4" />
+            My Creations
+          </Link>
+        </div>
       </div>
 
       {loading ? (

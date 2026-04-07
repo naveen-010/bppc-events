@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import FloatingCreateButton from "@/components/FloatingCreateButton";
 
 export const metadata: Metadata = {
   title: "BPPC Events | BITS Pilani",
@@ -24,6 +25,7 @@ export default function RootLayout({
               <p>BPPC Events Portal · BITS Pilani, Pilani Campus</p>
             </div>
           </footer>
+          <FloatingCreateButton />
         </ThemeProvider>
       </body>
     </html>
