@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
     await sendEmail({
       to: ['f20251159@pilani.bits-pilani.ac.in'],
-      subject: `BPPC Events Feedback${userEmail ? ` from ${userEmail}` : ''}`,
+      subject: 'BPPC Events Feedback',
       html,
     });
 
